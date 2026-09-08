@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProjectOne · Recuperar acesso</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Segoe UI, system-ui, sans-serif;
+        background: #0b1220;
+        color: #f8fafc;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        max-width: 520px;
+        width: 100%;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 16px;
+        padding: 28px;
+      }
+      h1 { margin: 0 0 8px; font-size: 1.5rem; }
+      p { color: #cbd5e1; line-height: 1.5; }
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-right: 8px;
+        margin-top: 8px;
+      }
+      .primary { background: #22c55e; color: #052e16; }
+      .danger { background: #ef4444; color: #fff; }
+      .ghost { background: transparent; color: #e2e8f0; border: 1px solid #475569; }
+      #log { margin-top: 16px; font-size: 0.9rem; color: #86efac; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Recuperar acesso</h1>
+      <p>
+        Se o ProjectOne travou após importar muitos projetos do Azure, o armazenamento do navegador
+        provavelmente encheu. Esta página limpa os dados locais pesados e devolve o acesso.
+      </p>
+      <p>
+        <strong>Recomendado:</strong> limpar só a importação Azure (mantém login e usuários).
+      </p>
+      <button class="primary" id="azure">Limpar importação Azure</button>
+      <button class="danger" id="all">Limpar todos os dados locais</button>
+      <button class="ghost" id="home">Ir para o login</button>
+      <div id="log"></div>
+    </div>
+    <script>
+      const KEEP_SOFT = new Set([
+        'projectone_session_user_id',
+        'projectone_users',
+        'projectone_custom_users',
+        'projectone_profiles',
+        'projectone_azure_devops',
+      ])
+
+      const HEAVY = [
+        'projectone_created_projects',
+        'projectone_created_tasks',
+        'projectone_tasks_overrides',
+        'projectone_features',
+        'projectone_histories',
+        'projectone_change_logs',
+        'projectone_task_updates',
+        'projectone_azure_import_map',
+        'projectone_deleted_projects',
+        'projectone_deleted_cascade_v1',
+        'projectone_qa_checklists',
+        'projectone_sustentacao_activities',
+        'projectone_alert_schedules',
+        'projectone_histories_migrated_v1',
+      ]
+
+      function log(msg) {
+        document.getElementById('log').textContent = msg
+      }
+
+      function clearAzureImport() {
+        let removed = 0
+        // Remove projetos Azure do array, se o JSON ainda abrir
+        try {
+          const raw = localStorage.getItem('projectone_created_projects')
+          if (raw) {
+            const list = JSON.parse(raw)
+            if (Array.isArray(list)) {
+              const kept = list.filter((p) => !p || !p.azureProjectId)
+              localStorage.setItem('projectone_created_projects', JSON.stringify(kept))
+            }
+          }
+        } catch (e) {
+          localStorage.removeItem('projectone_created_projects')
+          removed += 1
+        }
+
+        HEAVY.forEach((key) => {
+          if (key === 'projectone_created_projects') return
+          if (localStorage.getItem(key) != null) {
+            localStorage.removeItem(key)
+            removed += 1
+          }
+        })
+
+        // Remove map Azure sempre
+        localStorage.removeItem('projectone_azure_import_map')
+        log('Pronto. Importação Azure removida (' + removed + ' chaves). Você já pode entrar novamente.')
+      }
+
+      function clearAll() {
+        const keys = Object.keys(localStorage).filter((k) => k.startsWith('projectone_'))
+        keys.forEach((k) => localStorage.removeItem(k))
+        log('Pronto. Todos os dados locais do ProjectOne foram limpos. Faça login novamente.')
+      }
+
+      document.getElementById('azure').onclick = clearAzureImport
+      document.getElementById('all').onclick = function () {
+        if (confirm('Apagar TODOS os dados locais do ProjectOne neste navegador?')) clearAll()
+      }
+      document.getElementById('home').onclick = function () {
+        // Funciona em / e em /projectone/
+        const path = location.pathname.replace(/recover\.html.*/i, '')
+        location.href = path || './'
+      }
+    </script>
+  </body>
+</html>
